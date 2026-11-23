@@ -1,20 +1,16 @@
-import Fastify from "Fastify";
+// importar buildApp desde app.js (ojo, aunque sea en .ts los imports los hacemos con .js)
+import { buildApp } from "./app.js"
 
-const app = Fastify({
-    logger: true
-});
-
-app.get("/", async () => {
-    return { message: "LC Admin API" };
-});
+//contruimos nuestra app con la funcion buildApp de app.js
+const app = buildApp();
 
 const iniciarServidor = async () => {
     try {
         await app.listen({
             port: 3000,
-            host: "127.0.0.1"
+            host: "0.0.0.0"
         })
-        console.log("Servidor iniciado en http://127.0.0.1:3000");
+        // console.log("Servidor iniciado en http://127.0.0.1:3000");
     }
     catch (error) {
         app.log.error(error);

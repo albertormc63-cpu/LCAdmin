@@ -1,8 +1,6 @@
 import { defineConfig } from "drizzle-kit";
 
-declare const process: {
-    env: Record<string, string | undefined>;
-};
+import "dotenv/config";
 
 export default defineConfig({
     schema: "./src/db/schema.ts",
