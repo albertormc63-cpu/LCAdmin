@@ -1,0 +1,27 @@
+Inicializar node.js
+npm init -y
+
+Instalar TypeScript
+npm install -D typescript
+
+Instalar dotenv
+npm install dotenv
+
+Crar tsconfig.json
+npx tsc --init
+
+Compilar tsc
+npx tsc --noEmit
+
+Instalar los tipos de node
+npm install -D @types/node
+
+Instalar Fastify
+npm install fastify
+
+Instalar Drizzle y postgreSQL Drivers
+npm install drizzle-orm postgres
+
+Instalar drizzle-kit
+npm install -D drizzle-kit
+
