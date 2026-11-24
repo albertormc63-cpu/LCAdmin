@@ -17,7 +17,7 @@ function obtenerVariableURL(nombreVariable: string): string {
 //funcion para obtener la variable de entorno PORT y validar que sea un numero entero positivo
 function getPort(): number {
     //almacenar la variable PORT en una constante para poder usarla en la conexion a la base de datos
-    const valorPort = process.env.PORT;
+    const valorPort = process.env.PORT ?? '3000'; //valor por defecto 3000
     //validar que la variable de entorno sea un numero entero positivo
     const port = Number(valorPort);
     //isInteger() es un metodo de Number que valida si un numero es entero o no, ademas de validar que sea mayor a 0 y menor a 65535
