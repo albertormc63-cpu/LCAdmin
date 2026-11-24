@@ -25,3 +25,5 @@ npm install drizzle-orm postgres
 Instalar drizzle-kit
 npm install -D drizzle-kit
 
+Instalar tsx sirve para ejecutar TypeScript directamente sin compilar
+npm install -D tsx
