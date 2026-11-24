@@ -43,7 +43,9 @@ letras en distintos teléfonos.
     activo/inactivo.
 
 La identificación actual de los trabajos se basa en nombres como "Tanda
-3, Corrido 6". La aplicación debe conservar esa forma de identificación.
+3, Corrido 6". La aplicación debe conservar esa forma de identificación,
+aunque queda pendiente definir si los números serán consecutivos
+globales, consecutivos dentro de cada tanda o editables.
 
 ------------------------------------------------------------------------
 
@@ -78,6 +80,7 @@ La identificación actual de los trabajos se basa en nombres como "Tanda
 -   Acceso desde cualquier lugar por internet.
 -   Sincronización entre varias sedes o servidores.
 -   Edición simultánea de una letra al estilo Google Docs.
+-   Aplicaciones móviles nativas independientes para iOS y Android.
 
 Estos puntos no se consideran parte de la primera versión. El acceso
 remoto podría estudiarse después, mediante VPN o despliegue en hosting,
@@ -992,3 +995,154 @@ La memoria persistente de ChatGPT no está disponible en este proyecto;
 por eso este archivo debe conservarse dentro del repositorio, idealmente
 en `docs/PLAN_MAESTRO.md`, y compartirse de nuevo al retomar el trabajo
 si el contexto de la conversación no está disponible.
+
+
+---
+
+## ACTUALIZACIÓN DE DISEÑO — 24 DE NOVIEMBRE DE 2026
+
+Esta sección registra las decisiones más recientes y **prevalece sobre cualquier
+propuesta anterior que la contradiga**. El diseño sigue en etapa de definición:
+no implica que se hayan creado tablas, migraciones ni código.
+
+### 1. Numeración y organización de tandas
+
+- Las tandas se organizan semanalmente.
+- Ejemplo de rango: `23 Nov - 28 Nov`.
+- Una tanda normalmente contiene alrededor de 10 corridos, pero la cantidad
+  no es fija: puede haber más o menos.
+- La numeración de corridos es **por tanda**, no global.
+- La combinación `(tanda_id, numero)` debe ser única. Por tanto, distintas
+  tandas pueden tener un Corrido 1, un Corrido 2, etc.
+- Queda pendiente confirmar si el número de tanda es consecutivo global y
+  qué campos descriptivos adicionales necesita una tanda.
+
+### 2. Clientes centralizados — decisión confirmada
+
+Se elige el modelo de clientes centralizados:
+
+- Existirá una tabla `clients`.
+- Un cliente puede estar relacionado con varios corridos.
+- Los corridos pueden pertenecer a distintas tandas.
+- La propuesta inicial es que cada corrido tenga un `client_id` (un cliente
+  principal por corrido). Si se necesita más de un cliente por corrido,
+  deberá confirmarse antes de cerrar el esquema.
+
+Esto reemplaza la propuesta anterior de una ficha independiente por corrido.
+
+### 3. Usuarios y roles — decisión confirmada
+
+- Se elimina la propuesta de las tablas `roles` y `user_roles`.
+- No se asignarán permisos fijos por oficio o puesto. Cualquier integrante
+  puede colaborar en distintas tareas: editar letras, subir audios y
+  actualizar información según las necesidades del equipo.
+- Se conserva `users` para identificar quién realizó una acción y quién
+  subió un archivo o una versión de letra.
+- La eliminación de roles no significa eliminar la identificación de cada
+  integrante mediante su propio usuario.
+- La autorización y el acceso a funciones deberán definirse de forma sencilla;
+  no se implementará un sistema granular de roles sin una necesidad confirmada.
+
+### 4. Esquema de tablas simplificado — propuesta vigente
+
+Se propone trabajar inicialmente con seis tablas principales:
+
+1. `users`: cuentas de los integrantes.
+2. `tandas`: periodos semanales de trabajo.
+3. `clients`: información centralizada de clientes.
+4. `corridos`: trabajos musicales vinculados a una tanda y a un cliente.
+5. `lyrics`: versiones de la letra de cada corrido.
+6. `audio_files`: metadatos y ubicación de los audios de cada corrido.
+
+Para reducir tablas, el estado de producción se propone inicialmente como un
+campo de `corridos` (por ejemplo, `status`), en vez de una tabla
+`production_statuses`. Los valores permitidos del estado siguen pendientes
+de definición.
+
+Se descartan por ahora `roles`, `user_roles`, `status_history` y
+`activity_logs`. El historial de versiones de letras sí se conserva como
+funcionalidad importante. Esta simplificación es una propuesta de diseño,
+no una implementación.
+
+### 5. UUID e identificación interna de corridos
+
+UUID significa *Universally Unique Identifier*: un identificador único
+de formato estándar, por ejemplo:
+
+`8f7a2c91-6d42-4e1a-9b33-1c7e5a0d1234`
+
+Se propone que cada corrido tenga un UUID interno e inmutable. La interfaz
+seguirá mostrando la tanda y el número legibles para el equipo, pero el
+sistema utilizará el UUID para relacionar registros y archivos. Cambiar el
+título, la tanda visible o el número no cambiará la identidad interna.
+
+### 6. Almacenamiento de audios — decisión funcional confirmada
+
+- Los archivos de audio vivirán en el sistema de archivos de la laptop
+  servidor; PostgreSQL guardará sus metadatos y una clave/ruta relativa.
+- Fastify recibirá las subidas desde navegadores y guardará cada archivo
+  en la carpeta correspondiente al UUID del corrido.
+- Las maquetas anteriores se conservarán: subir un audio nuevo no debe
+  sobrescribir otro.
+- La aplicación web permitirá reproducir los audios y descargarlos.
+- Los dispositivos de la red local no accederán directamente a las carpetas
+  del servidor: recibirán los archivos mediante endpoints de Fastify.
+- Se debe respaldar tanto PostgreSQL como el directorio de audios.
+
+Estructura propuesta:
+
+```text
+LOS-CARO-DATA/
+└── uploads/
+    └── corridos/
+        └── <UUID-DEL-CORRIDO>/
+            ├── <archivo-audio-1>
+            ├── <archivo-audio-2>
+            └── <archivo-audio-3>
+```
+
+El nombre de carpeta no dependerá de etiquetas como `Tanda 3 - Corrido 6`.
+La relación se mantendrá por el UUID almacenado en PostgreSQL.
+
+Flujo propuesto:
+1. Se crea el corrido y se genera su UUID.
+2. Fastify crea la carpeta del corrido en el almacenamiento configurado.
+3. Al subir un audio, Fastify valida el archivo, genera un nombre interno
+   único y lo guarda en esa carpeta.
+4. PostgreSQL registra el corrido, nombre original, clave de almacenamiento,
+   tipo MIME, tamaño, fecha y usuario que lo subió.
+5. La web consulta la lista de audios y los reproduce o descarga a través
+   de Fastify.
+
+Deben contemplarse errores parciales (por ejemplo, archivo guardado pero
+falló el registro en la base de datos), nombres seguros, límites de tamaño,
+formatos admitidos, acceso autorizado y recuperación de archivos.
+
+### 7. Reproducción web
+
+La aplicación deberá ofrecer:
+- Reproductor de audio en el navegador.
+- Entrega de audio mediante streaming HTTP para permitir reproducción y
+  navegación dentro del audio cuando el formato y el navegador lo permitan.
+- Descarga individual de cada archivo.
+- Acceso desde dispositivos conectados a la misma LAN, sin requerir internet.
+- Conservación de múltiples maquetas por corrido.
+
+### 8. Estado de implementación
+
+No se han autorizado ni realizado cambios de código, esquema o migraciones
+como resultado de esta actualización. El repositorio revisado sigue siendo
+el punto de partida descrito en el diagnóstico anterior. Primero se debe
+cerrar el diseño de las tablas, campos, estados y reglas de archivos.
+
+### 9. Próximas decisiones por confirmar
+
+- Campos que tendrá `clients` (nombre, teléfono, datos del encargo, etc.).
+- Si cada corrido tendrá exactamente un cliente principal.
+- Campos y fechas de `tandas`.
+- Lista de estados de producción.
+- Formatos de audio admitidos y tamaño máximo por archivo.
+- Si los audios podrán eliminarse o solamente archivarse.
+- Qué información de la letra se mostrará como versión vigente y cómo se
+  restaurará una versión anterior.
+- Campos y reglas finales de las seis tablas.
