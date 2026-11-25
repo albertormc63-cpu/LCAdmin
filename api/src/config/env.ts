@@ -15,7 +15,7 @@ function obtenerVariableURL(nombreVariable: string): string {
 }
 
 //funcion para obtener la variable de entorno PORT y validar que sea un numero entero positivo
-function getPort(): number {
+function obtenerPort(): number {
     //almacenar la variable PORT en una constante para poder usarla en la conexion a la base de datos
     const valorPort = process.env.PORT ?? '3000'; //valor por defecto 3000
     //validar que la variable de entorno sea un numero entero positivo
@@ -32,7 +32,7 @@ function getPort(): number {
 export const env = {
     //obtener la variable de entorno DATABASE_URL usando la funcion obtenerVariableURL
     DATABASE_URL: obtenerVariableURL('DATABASE_URL'),
-    //obtener la variable de entorno PORT usando la funcion getPort
-    PORT: getPort(),
+    //obtener la variable de entorno PORT usando la funcion obtenerPort
+    PORT: obtenerPort(),
     HOST: process.env.HOST?.trim() || '0.0.0.0',
 };
